@@ -1,79 +1,225 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# step 1 :- Goolge authentication flow :-
 
-# Getting Started
+--------In this application authentication is done by Google OAuth library '@react-native-google-signin/google-signin'-----------
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+import {
+GoogleSignin,
+GoogleSigninButton,
+statusCodes,
+} from '@react-native-google-signin/google-signin';
 
-## Step 1: Start the Metro Server
+---------First we configure our client ID which was generste in google console-----------------------
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
+GoogleSignin.configure({
+webClientId:
+'131693510285-bomklkn4a16i4ejh09gn17q5rfmprubk.apps.googleusercontent.com',
+offlineAccess: true,
+});
 
-To start Metro, run the following command from the _root_ of your React Native project:
+---------------TO sign in with google, there is signIn() function has already provided------------------
 
-```bash
-# using npm
-npm start
+const signIn = async () => {
+try {
+await GoogleSignin.hasPlayServices();
+const userInfo = await GoogleSignin.signIn();
+setUserDetails({userGoogleInfo: userInfo, loaded: true});
+await AsyncStorage.setItem(
+'userDetails',
+JSON.stringify({userInfo, loaded: true}),
+);
+navigation.navigate('Bottomnavigation', {
+userDetails: {userInfo, loaded: true},
+fromLogin: true,
+});
+} catch (error) {
+if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+// user cancelled the login flow
+} else if (error.code === statusCodes.IN_PROGRESS) {
+// operation (e.g. sign in) is in progress already
+} else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+// play services not available or outdated
+} else {
+console.log('other errror');
+}
+}
+};
 
-# OR using Yarn
-yarn start
-```
+# step2 :- state management of this login credentials with the help of asyncstorage library '@react-native-async-storage/async-storage';
 
-## Step 2: Start your Application
+---------------------------- set login userInfo in async storage-----------------------------
 
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
+await AsyncStorage.setItem(
+'userDetails',
+JSON.stringify({userInfo, loaded: true}),
+);
 
-### For Android
+-------------get data from async storage-------------------------------
 
-```bash
-# using npm
-npm run android
+const getUserDetailsFromStorage = async () => {
+try {
+const storedUserDetails = await AsyncStorage.getItem('userDetails');
 
-# OR using Yarn
-yarn android
-```
+          if (!storedUserDetails) {
+            navigation.navigate('Login');
+            Alert.alert('Login Details not found, Please login Again');
+          } else {
+            const {userInfo, loaded} = JSON.parse(storedUserDetails);
+            setUserInfo(userInfo);
+            setLoaded(loaded);
+            // Update your state or perform any other actions with the retrieved data
+          }
+        } catch (error) {
+          // Handle errors
+        } finally {
+          setLoading(false);
+        }
+      };
 
-### For iOS
+# step 3 :- create user
 
-```bash
-# using npm
-npm run ios
+-----------------We have used google api in Login page, now we pass data with the help of asyncStorage and pass this data to user api---------------
 
-# OR using Yarn
-yarn ios
-```
+-----------------create user with api-------------------------
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+const BASE_URL = 'https://654b68155b38a59f28ef05c2.mockapi.io/scopex/api';
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+const createuser = async () => {
+try {
+const response = await fetch(`${BASE_URL}/users`, {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+},
+body: JSON.stringify({
+userInfo,
+}),
+});
 
-## Step 3: Modifying your App
+        if (response.ok) {
+          setLoading(false);
+          Alert.alert('User created');
+          console.log('User created');
+        } else {
+          setLoading(false);
+          Alert.alert('Can not create more than 100 user');
+          // Handle error
+          console.error('User is not created');
+        }
+      } catch (error) {
+        setLoading(false);
+        Alert.alert('Failed to create user');
+        console.error('Error creating user:', error);
+      }
+    };
 
-Now that you have successfully run the app, let's modify it.
+#step 4 :- now we create simple UI of transaction and history with the help of bottom navigation library '@react-navigation/bottom-tabs' -----------------
 
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
+---------------with the help of <Tab.Navigator> and <Tab.screen> we can navigate transaction and History screen----------------
 
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
+# Step 5 :- ----------------------------- Transaction screen-------------------------------------
 
-## Congratulations! :tada:
+--------------------------For trnsaction screen there are provided three input feild to fill details, 1. sent_amount 2. Description 3. Whom to sent-----------
 
-You've successfully run and modified your React Native App. :partying_face:
+---we have used POST api to create this transaction ----------------------
 
-### Now what?
+API:- https://654b68155b38a59f28ef05c2.mockapi.io/scopex/api/Transfers
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
+code:-
 
-# Troubleshooting
+const handleCreateTransaction = async () => {
+setLoading(true);
 
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+    if (
+      sent_amount.trim() === '' ||
+      description.trim() === '' ||
+      to.trim() === ''
+    ) {
+      Alert.alert('Please fill all Details');
+      setLoading(false);
+    } else {
+      try {
+        const response = await fetch(`${BASE_URL}/Transfers`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sent_amount,
+            description,
+            to,
+          }),
+        });
 
-# Learn More
+        if (response.ok) {
+          setLoading(false);
+          Alert.alert('Transaction complete');
+          // Transaction created successfully
+          console.log('Transaction created!');
+        } else {
+          setLoading(false);
+          Alert.alert('Failed to create transaction');
+          // Handle error
+          console.error('Failed to create transaction');
+        }
+      } catch (error) {
+        setLoading(false);
+        Alert.alert('Failed to create transaction');
+        console.error('Error creating transaction:', error);
+      }
+    }
 
-To learn more about React Native, take a look at the following resources:
+};
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+# step 6 :- Create History Page
+
+---------- To create History page we have used GET API to get all transaction HIstory--------------------------------
+
+API:- https://654b68155b38a59f28ef05c2.mockapi.io/scopex/api/Transfers (GET Method)
+
+code:-
+
+const fetchTransactions = async () => {
+setLoading(true);
+try {
+const response = await fetch(`${BASE_URL}/Transfers`);
+if (response.ok) {
+const data = await response.json();
+// Sort transactions in descending order based on id
+const sortedTransactions = data.sort((a, b) => b.id - a.id);
+setTransactions(sortedTransactions);
+setLoading(false);
+console.log(transactions);
+} else {
+setLoading(false);
+console.error('Failed to fetch transactions');
+}
+} catch (error) {
+setLoading(false);
+console.error('Error fetching transactions:', error);
+}
+};
+
+-----------------------we have used <Flatlist/> to show all data in same format-----------------------------------
+
+# step 7 :- Logout
+
+-----------------------For logout we have simply used google's signout() function and 'reomveItem' from Async Storage as well-------------
+
+code:-
+
+const handleLogout = async () => {
+try {
+// Sign out from Google Sign-In
+await GoogleSignin.signOut();
+
+      // Remove user details from AsyncStorage
+      await AsyncStorage.removeItem('userDetails');
+
+      setForceRender(forceRender + 1);
+      // Navigate to the Login screen or perform any other actions
+      await navigation.navigate('Login');
+    } catch (error) {
+      console.error('Logout Error:', error);
+    }
+
+};
