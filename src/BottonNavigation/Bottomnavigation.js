@@ -238,7 +238,7 @@ const Bottomnavigation = ({navigation}) => {
                         ? colorsobject.themecolor
                         : colorsobject.black,
                   }}>
-                  History
+                  Historyy
                 </Text>
               </TouchableOpacity>
             </View>
